@@ -188,7 +188,15 @@ img.cardimg{max-width:100%;border-radius:8px;border:1px solid var(--line)}
     $("lErr").textContent = ""; $("lBtn").disabled = true;
     var r = await sb.auth.signInWithPassword({ email: $("lEmail").value.trim(), password: $("lPass").value });
     $("lBtn").disabled = false;
-    if (r.error) { $("lErr").textContent = /fetch|network/i.test(r.error.message) ? "Нет связи. Для первого входа нужен интернет." : "Неверный email или пароль."; return; }
+    if (r.error) {
+      var em = r.error.message || "", est = r.error.status ? " (код " + r.error.status + ")" : "";
+      console.error("Ошибка входа:", r.error);
+      $("lErr").textContent = /fetch|network|load failed/i.test(em) ? "Нет связи с базой. Проверьте интернет и SUPABASE_URL в config.js. Детали: " + em
+        : /invalid login credentials/i.test(em) ? "Неверный email или пароль."
+        : /email not confirmed/i.test(em) ? "Email не подтверждён: в Supabase откройте Authentication → Users и подтвердите пользователя."
+        : "Ошибка входа: " + em + est;
+      return;
+    }
     $("login").hidden = true; await enter(r.data.user);
   };
   $("lPass").onkeydown = function (e) { if (e.key === "Enter") $("lBtn").click(); };
