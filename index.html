@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#17191e">
+<title>INAPO Lead Collector</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f6f7f9;--panel:#fff;--line:#dfe3e8;--text:#1d2025;--mute:#6b7280;--pri:#1976d2;--tonal:#dce8f8;--ok:#1b7f4b;--bad:#d93025;--bar:#17191e;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#101215;--panel:#1a1d22;--line:#2e333b;--text:#e8eaed;--mute:#9aa1ab;--tonal:#1f3350;--ok:#7fd1a1;--bad:#f28b82;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.4 Roboto,system-ui,sans-serif;padding-bottom:env(safe-area-inset-bottom,0)}
+[hidden]{display:none!important}
+header{background:var(--bar);color:#fff;padding:calc(.6rem + env(safe-area-inset-top,0)) 1rem .6rem;position:sticky;top:0;z-index:5}
+.hrow{max-width:960px;margin:auto;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.5rem}
+h1{font-size:1.1rem;margin:0}
+nav{display:flex;gap:.25rem;flex-wrap:wrap}
+nav button{background:none;border:0;color:#fff;opacity:.7;padding:.5rem .75rem;border-radius:8px;font:500 .9rem Roboto,sans-serif;cursor:pointer}
+nav button.on{opacity:1;background:rgba(255,255,255,.15)}
+.who{font-size:.8rem;opacity:.8}
+main{max-width:960px;margin:auto;padding:1rem}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:1rem}
+.narrow{max-width:640px}
+.stack>*+*{margin-top:.9rem}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+@media (max-width:560px){.grid2{grid-template-columns:1fr}}
+label{display:block;font-size:.8rem;color:var(--mute);margin-bottom:.25rem}
+input,select,textarea{width:100%;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:.7rem .8rem;font:inherit;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--pri);box-shadow:0 0 0 2px rgba(25,118,210,.25)}
+button.btn{border-radius:8px;padding:.7rem 1rem;font:500 .9rem Roboto,sans-serif;border:1px solid var(--line);background:var(--panel);color:var(--text);cursor:pointer}
+button.btn:disabled{opacity:.6}
+button.pri{background:var(--pri);border-color:var(--pri);color:#fff}
+button.tonal{background:var(--tonal);border-color:transparent;color:var(--text)}
+button.danger{color:var(--bad)}
+.chips{display:flex;flex-wrap:wrap;gap:.5rem}
+.chip{border:1px solid var(--line);border-radius:999px;padding:.4rem .9rem;font-size:.85rem;background:var(--panel);color:var(--mute);cursor:pointer}
+.chip.on{background:var(--pri);border-color:var(--pri);color:#fff;font-weight:500}
+.mute{color:var(--mute)}
+.small{font-size:.8rem}
+.row{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
+.row>.grow{flex:1;min-width:0}
+.item{display:block;width:100%;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:.75rem .9rem;color:inherit;font:inherit;cursor:pointer;margin-bottom:.5rem}
+.item b{font-weight:500}
+.tag{display:inline-block;font-size:.72rem;background:var(--tonal);border-radius:999px;padding:.1rem .55rem;margin:.15rem .25rem 0 0}
+.banner{background:#fff4d6;color:#5b4300;padding:.6rem 1rem;font-size:.85rem;text-align:center}
+@media (prefers-color-scheme:dark){.banner{background:#3a2f0b;color:#f4dd9a}}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(1rem + env(safe-area-inset-bottom,0));background:#17191e;color:#fff;padding:.7rem 1.1rem;border-radius:8px;font-size:.9rem;z-index:30;max-width:90%}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:20;overflow:auto;padding:1rem}
+.overlay .card{max-width:640px;margin:1rem auto}
+#login{max-width:380px;margin:12vh auto;padding:0 1rem}
+img.cardimg{max-width:100%;border-radius:8px;border:1px solid var(--line)}
+</style>
+</head>
+<body>
+
+<section id="setup" hidden><main><div class="card narrow stack"><h2 style="margin:0">Нужно подключить базу</h2><p class="mute">Откройте файл <b>config.js</b> и вставьте адрес проекта Supabase (SUPABASE_URL) и публичный ключ (SUPABASE_ANON_KEY). Подробности в README.</p></div></main></section>
+
+<section id="login" hidden>
+  <div class="card stack">
+    <h1 style="color:var(--text)">INAPO Lead Collector</h1>
+    <div><label for="lEmail">Email</label><input id="lEmail" type="email" autocomplete="username"></div>
+    <div><label for="lPass">Пароль</label><input id="lPass" type="password" autocomplete="current-password"></div>
+    <button id="lBtn" class="btn pri" style="width:100%;padding:.85rem">Войти</button>
+    <div id="lErr" class="small" style="color:var(--bad)"></div>
+  </div>
+</section>
+
+<div id="app" hidden>
+  <header><div class="hrow">
+    <h1>INAPO Lead Collector</h1>
+    <nav id="nav">
+      <button data-tab="new" class="on">Новый лид</button>
+      <button data-tab="list">Лиды</button>
+      <button data-tab="settings" id="navSet" hidden>Настройки</button>
+      <button id="logout">Выйти</button>
+    </nav>
+    <div class="who" id="who"></div>
+  </div></header>
+  <div id="banner" class="banner" hidden></div>
+
+  <main>
+    <section id="tab-new" class="card narrow stack">
+      <div class="grid2">
+        <div><label for="fShow">Выставка</label><select id="fShow"></select></div>
+        <div><label>Менеджер</label><input id="fMgr" disabled></div>
+      </div>
+      <div class="grid2">
+        <button id="photoBtn" class="btn pri" type="button">Сфотографировать визитку</button>
+        <div id="photoInfo" class="small mute" style="align-self:center">Фото визитки не добавлено</div>
+      </div>
+      <input id="photoIn" type="file" accept="image/*" capture="environment" hidden>
+      <img id="photoPrev" class="cardimg" hidden alt="Визитка">
+      <div class="grid2">
+        <div><label for="fName">Имя контактного лица *</label><input id="fName" autocomplete="off"></div>
+        <div><label for="fCompany">Компания</label><input id="fCompany" autocomplete="off"></div>
+        <div><label for="fPhone">Телефон</label><input id="fPhone" type="tel" autocomplete="off"></div>
+        <div><label for="fEmail">Email</label><input id="fEmail" type="email" autocomplete="off"></div>
+      </div>
+      <div><label>Услуга, которой интересовался *</label><div class="chips" id="fServices"></div></div>
+      <div><label>Гипотеза работы после выставки</label><div class="chips" id="fHyp"></div></div>
+      <div><label>Языки клиента (можно несколько)</label><div class="chips" id="fLangs"></div></div>
+      <div><label for="fComment">Комментарий</label><textarea id="fComment" rows="4" placeholder="Что интересует, объёмы, договорённости… (для диктовки нажмите микрофон на клавиатуре телефона)"></textarea></div>
+      <button id="saveBtn" class="btn pri" style="width:100%;padding:.85rem">Сохранить лид</button>
+    </section>
+
+    <section id="tab-list" hidden class="stack">
+      <div class="card row">
+        <div class="grow"><label for="qSearch">Поиск</label><input id="qSearch" placeholder="Имя, компания, email…"></div>
+        <div class="grow"><label for="qShow">Выставка</label><select id="qShow"></select></div>
+        <div class="grow"><label for="qMgr">Менеджер</label><select id="qMgr"></select></div>
+        <button id="xlsBtn" class="btn pri" style="align-self:flex-end">Выгрузить в Excel</button>
+      </div>
+      <div id="leadsCount" class="small mute"></div>
+      <div id="leads"></div>
+    </section>
+
+    <section id="tab-settings" hidden class="stack">
+      <div class="card stack"><h3 style="margin:0">Выставки</h3><div id="setShows"></div>
+        <div class="row"><input class="grow" id="nsName" placeholder="Название"><input class="grow" id="nsCountry" placeholder="Страна"><button class="btn pri" id="nsAdd">Добавить</button></div></div>
+      <div class="card stack"><h3 style="margin:0">Услуги</h3><p class="small mute" style="margin:0">Список для поля «Услуга, которой интересовался». Воронка нужна на следующем этапе, для раздела «Клиенты».</p><div id="setSvcs"></div>
+        <div class="row"><input class="grow" id="nvName" placeholder="Название услуги"><select class="grow" id="nvFun"><option value="mp">Воронка: Marketplace</option><option value="tk">Воронка: Продажи под ключ</option><option value="ai">Воронка: B2B-портал / AI</option></select><button class="btn pri" id="nvAdd">Добавить</button></div></div>
+      <div class="card stack"><h3 style="margin:0">Гипотезы работы после выставки</h3><div id="setHyps"></div>
+        <div class="row"><input class="grow" id="nhName" placeholder="Новая гипотеза"><button class="btn pri" id="nhAdd">Добавить</button></div></div>
+    </section>
+  </main>
+</div>
+
+<div id="modal" class="overlay" hidden></div>
+<div id="toast" hidden></div>
+
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); };
+  var LANGS = { fr: "Français", pl: "Polski", de: "Deutsch", en: "English", ru: "Русский", uk: "Українська", it: "Italiano" };
+  var cfg = window.APP_CONFIG || {};
+  if (!cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY) { $("setup").hidden = false; return; }
+  var sb = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, { auth: { persistSession: true, autoRefreshToken: true } });
+
+  var S = { user: null, profile: null, shows: [], services: [], hyps: [], leads: [], form: { services: [], hyp: "", langs: ["en"], photo: null } };
+  var QUEUE_KEY = "inapo_queue_v1";
+
+  function toast(m) { var t = $("toast"); t.textContent = m; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(function () { t.hidden = true; }, 3200); }
+  function uid() { return (crypto.randomUUID ? crypto.randomUUID() : Date.now() + "-" + Math.random().toString(36).slice(2)); }
+  function fmt(ts) { return new Date(ts).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }); }
+  function isNetErr(e) { return !navigator.onLine || /fetch|network|load failed/i.test((e && e.message) || ""); }
+
+  /* ---------- очередь отправки (если нет связи) ---------- */
+  function getQ() { try { return JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]"); } catch (e) { return []; } }
+  function setQ(q) { try { localStorage.setItem(QUEUE_KEY, JSON.stringify(q)); } catch (e) { toast("Память устройства заполнена: выгрузите лиды в Excel"); } showBanner(); }
+  function showBanner() {
+    var n = getQ().length, b = $("banner");
+    if (n) { b.hidden = false; b.textContent = "Не отправлено лидов: " + n + ". Они хранятся на устройстве и уйдут, когда появится связь. Не очищайте браузер."; } else b.hidden = true;
+  }
+  async function submitLead(item) {
+    var rec = item.rec, card_path = null;
+    if (item.photo) {
+      var blob = await (await fetch(item.photo)).blob();
+      var path = S.user.id + "/" + rec.client_op_id + ".jpg";
+      var up = await sb.storage.from("cards").upload(path, blob, { contentType: "image/jpeg", upsert: true });
+      if (up.error) throw up.error;
+      card_path = path;
+    }
+    var r = await sb.from("leads").upsert(Object.assign({}, rec, { card_path: card_path }), { onConflict: "client_op_id", ignoreDuplicates: true });
+    if (r.error) throw r.error;
+  }
+  var flushing = false;
+  async function flushQueue() {
+    if (flushing || !S.user) return; var q = getQ(); if (!q.length) return; flushing = true;
+    var left = [], sent = 0;
+    for (var i = 0; i < q.length; i++) {
+      try { await submitLead(q[i]); sent++; } catch (e) { if (isNetErr(e)) { left = left.concat(q.slice(i)); break; } else { console.error(e); left.push(q[i]); } }
+    }
+    setQ(left); flushing = false;
+    if (sent) { toast("Отправлено из очереди: " + sent); loadLeads(); }
+  }
+
+  /* ---------- вход ---------- */
+  async function boot() {
+    var r = await sb.auth.getSession();
+    if (r.data.session) await enter(r.data.session.user); else { $("login").hidden = false; }
+  }
+  $("lBtn").onclick = async function () {
+    $("lErr").textContent = ""; $("lBtn").disabled = true;
+    var r = await sb.auth.signInWithPassword({ email: $("lEmail").value.trim(), password: $("lPass").value });
+    $("lBtn").disabled = false;
+    if (r.error) { $("lErr").textContent = /fetch|network/i.test(r.error.message) ? "Нет связи. Для первого входа нужен интернет." : "Неверный email или пароль."; return; }
+    $("login").hidden = true; await enter(r.data.user);
+  };
+  $("lPass").onkeydown = function (e) { if (e.key === "Enter") $("lBtn").click(); };
+  $("logout").onclick = async function () { await sb.auth.signOut(); location.reload(); };
+
+  async function enter(user) {
+    S.user = user; $("app").hidden = false;
+    try {
+      var p = await sb.from("profiles").select("*").eq("id", user.id).single();
+      S.profile = p.data || { id: user.id, name: "", role: "manager" };
+    } catch (e) { S.profile = { id: user.id, name: "", role: "manager" }; }
+    if (!S.profile.name) await askName();
+    $("who").textContent = S.profile.name + (S.profile.role === "admin" ? " · админ" : "");
+    $("navSet").hidden = S.profile.role !== "admin";
+    $("fMgr").value = S.profile.name;
+    await loadRefs(); renderForm(); showBanner(); flushQueue(); loadLeads();
+  }
+  function askName() {
+    return new Promise(function (res) {
+      var m = $("modal"); m.hidden = false;
+      m.innerHTML = '<div class="card stack"><h3 style="margin:0">Как вас зовут?</h3><p class="mute small" style="margin:0">Имя будет подписано под каждым вашим лидом.</p><input id="nmIn" placeholder="Имя"><button class="btn pri" id="nmOk">Продолжить</button></div>';
+      $("nmOk").onclick = async function () {
+        var n = $("nmIn").value.trim(); if (!n) return;
+        var r = await sb.from("profiles").update({ name: n }).eq("id", S.user.id);
+        if (r.error) { toast("Не удалось сохранить имя"); return; }
+        S.profile.name = n; m.hidden = true; res();
+      };
+    });
+  }
+
+  /* ---------- справочники ---------- */
+  function cacheRefs() { try { localStorage.setItem("inapo_refs_v1", JSON.stringify({ shows: S.shows, services: S.services, hyps: S.hyps })); } catch (e) {} }
+  async function loadRefs() {
+    try {
+      var a = await Promise.all([sb.from("shows").select("*").order("name"), sb.from("services").select("*").order("name"), sb.from("hypotheses").select("*").order("name")]);
+      if (a[0].error || a[1].error || a[2].error) throw (a[0].error || a[1].error || a[2].error);
+      S.shows = a[0].data; S.services = a[1].data; S.hyps = a[2].data; cacheRefs();
+    } catch (e) {
+      try { var c = JSON.parse(localStorage.getItem("inapo_refs_v1") || "null"); if (c) { S.shows = c.shows; S.services = c.services; S.hyps = c.hyps; } } catch (x) {}
+    }
+  }
+
+  /* ---------- форма нового лида ---------- */
+  function chips(el, items, isOn, onClick) {
+    el.innerHTML = ""; items.forEach(function (it) {
+      var b = document.createElement("button"); b.type = "button"; b.className = "chip" + (isOn(it.v) ? " on" : ""); b.textContent = it.t;
+      b.onclick = function () { onClick(it.v); }; el.appendChild(b);
+    });
+  }
+  function renderForm() {
+    var keep = $("fShow").value;
+    $("fShow").innerHTML = S.shows.map(function (s) { return "<option>" + esc(s.name) + "</option>"; }).join("");
+    if (keep && S.shows.some(function (s) { return s.name === keep; })) $("fShow").value = keep; else { try { var l = localStorage.getItem("inapo_lastshow"); if (l && S.shows.some(function (s) { return s.name === l; })) $("fShow").value = l; } catch (e) {} }
+    chips($("fServices"), S.services.map(function (s) { return { v: s.name, t: s.name }; }), function (v) { return S.form.services.indexOf(v) > -1; }, function (v) {
+      var a = S.form.services, i = a.indexOf(v); if (i > -1) a.splice(i, 1); else a.push(v); renderForm();
+    });
+    chips($("fHyp"), S.hyps.map(function (h) { return { v: h.name, t: h.name }; }), function (v) { return S.form.hyp === v; }, function (v) { S.form.hyp = S.form.hyp === v ? "" : v; renderForm(); });
+    chips($("fLangs"), Object.keys(LANGS).map(function (k) { return { v: k, t: LANGS[k] }; }), function (v) { return S.form.langs.indexOf(v) > -1; }, function (v) {
+      var a = S.form.langs, i = a.indexOf(v); if (i > -1) { if (a.length > 1) a.splice(i, 1); } else a.push(v); renderForm();
+    });
+  }
+  $("fShow").onchange = function () { try { localStorage.setItem("inapo_lastshow", $("fShow").value); } catch (e) {} };
+
+  function resize(file, max, q) {
+    return new Promise(function (res, rej) {
+      var img = new Image(), u = URL.createObjectURL(file);
+      img.onload = function () { var k = Math.min(1, max / Math.max(img.width, img.height)), c = document.createElement("canvas"); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k); c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(u); res(c.toDataURL("image/jpeg", q)); };
+      img.onerror = rej; img.src = u;
+    });
+  }
+  $("photoBtn").onclick = function () { $("photoIn").click(); };
+  $("photoIn").onchange = async function (e) {
+    var f = e.target.files && e.target.files[0]; e.target.value = ""; if (!f) return;
+    try { S.form.photo = await resize(f, 1200, 0.72); $("photoPrev").src = S.form.photo; $("photoPrev").hidden = false; $("photoInfo").textContent = "Фото визитки добавлено"; } catch (x) { toast("Не удалось прочитать фото"); }
+  };
+
+  $("saveBtn").onclick = async function () {
+    var name = $("fName").value.trim();
+    if (!name) return toast("Укажите имя контактного лица");
+    if (!S.form.services.length) return toast("Выберите услугу, которой интересовался клиент");
+    var show = S.shows.find(function (s) { return s.name === $("fShow").value; });
+    var item = { photo: S.form.photo, rec: {
+      client_op_id: uid(), name: name, company: $("fCompany").value.trim(), phone: $("fPhone").value.trim(), email: $("fEmail").value.trim(),
+      services: S.form.services.slice(), langs: S.form.langs.slice(), hyp: S.form.hyp, comment: $("fComment").value.trim(),
+      show: show ? show.name : "", country: show ? show.country : "", manager: S.profile.name } };
+    $("saveBtn").disabled = true;
+    try { await submitLead(item); toast("Лид сохранён"); }
+    catch (e) {
+      if (isNetErr(e)) { var q = getQ(); q.push(item); setQ(q); toast("Нет связи: лид сохранён на устройстве и отправится позже"); }
+      else { console.error(e); $("saveBtn").disabled = false; return toast("Ошибка сохранения: " + (e.message || "неизвестная")); }
+    }
+    $("saveBtn").disabled = false;
+    ["fName", "fCompany", "fPhone", "fEmail", "fComment"].forEach(function (id) { $(id).value = ""; });
+    S.form = { services: [], hyp: "", langs: ["en"], photo: null }; $("photoPrev").hidden = true; $("photoInfo").textContent = "Фото визитки не добавлено"; renderForm();
+    loadLeads();
+  };
+
+  /* ---------- список лидов ---------- */
+  async function loadLeads() {
+    try { var r = await sb.from("leads").select("*").order("created_at", { ascending: false }).limit(2000); if (r.error) throw r.error; S.leads = r.data; try { localStorage.setItem("inapo_leads_cache", JSON.stringify(S.leads.slice(0, 300))); } catch (x) {} }
+    catch (e) { try { S.leads = JSON.parse(localStorage.getItem("inapo_leads_cache") || "[]"); } catch (x) { S.leads = []; } }
+    renderList();
+  }
+  function filtered() {
+    var q = $("qSearch").value.trim().toLowerCase(), sh = $("qShow").value, mg = $("qMgr").value;
+    return S.leads.filter(function (l) { return (!sh || l.show === sh) && (!mg || l.manager === mg) && (!q || [l.name, l.company, l.email, l.phone, l.comment].join(" ").toLowerCase().indexOf(q) > -1); });
+  }
+  function renderList() {
+    var shKeep = $("qShow").value, mgKeep = $("qMgr").value;
+    var shows = Array.from(new Set(S.leads.map(function (l) { return l.show; }).filter(Boolean))), mgrs = Array.from(new Set(S.leads.map(function (l) { return l.manager; }).filter(Boolean)));
+    $("qShow").innerHTML = '<option value="">Все</option>' + shows.map(function (s) { return "<option>" + esc(s) + "</option>"; }).join(""); $("qShow").value = shKeep;
+    $("qMgr").innerHTML = '<option value="">Все</option>' + mgrs.map(function (s) { return "<option>" + esc(s) + "</option>"; }).join(""); $("qMgr").value = mgKeep;
+    var list = filtered();
+    $("leadsCount").textContent = "Лидов: " + list.length + (list.length !== S.leads.length ? " из " + S.leads.length : "");
+    $("leads").innerHTML = list.length ? list.map(function (l) {
+      return '<button class="item" data-id="' + l.id + '"><b>' + esc(l.name) + "</b>" + (l.company ? ' <span class="mute">· ' + esc(l.company) + "</span>" : "") + "<div>" +
+        (l.services || []).map(function (s) { return '<span class="tag">' + esc(s) + "</span>"; }).join("") + '</div><div class="small mute">' + esc(l.show) + " · " + esc(l.manager) + " · " + fmt(l.created_at) + "</div></button>";
+    }).join("") : '<div class="card mute">Лидов нет. Добавьте первого на вкладке «Новый лид» или смените фильтры.</div>';
+  }
+  ["qSearch", "qShow", "qMgr"].forEach(function (id) { $(id).oninput = renderList; });
+  $("leads").onclick = function (e) { var b = e.target.closest(".item"); if (b) openLead(b.getAttribute("data-id")); };
+
+  async function openLead(id) {
+    var l = S.leads.find(function (x) { return x.id === id; }); if (!l) return;
+    var m = $("modal"); m.hidden = false;
+    m.innerHTML = '<div class="card stack"><div class="row" style="justify-content:space-between"><h3 style="margin:0">' + esc(l.name) + '</h3><button class="btn" id="mClose">Закрыть</button></div>' +
+      '<div class="mute">' + esc(l.company || "Компания не указана") + "</div>" +
+      '<div class="grid2 small"><div>Телефон: <b>' + esc(l.phone || "—") + "</b></div><div>Email: <b>" + esc(l.email || "—") + "</b></div><div>Выставка: <b>" + esc(l.show) + "</b></div><div>Менеджер: <b>" + esc(l.manager) + "</b></div><div>Услуги: <b>" + esc((l.services || []).join(", ") || "—") + "</b></div><div>Языки: <b>" + esc((l.langs || []).map(function (k) { return LANGS[k] || k; }).join(", ")) + "</b></div><div>Гипотеза: <b>" + esc(l.hyp || "—") + "</b></div><div>Добавлен: <b>" + fmt(l.created_at) + "</b></div></div>" +
+      '<div><label for="mComment">Комментарий</label><textarea id="mComment" rows="4">' + esc(l.comment) + "</textarea></div>" +
+      '<div id="mImg"></div><div class="row"><button class="btn pri" id="mSave">Сохранить комментарий</button>' + (S.profile.role === "admin" ? '<button class="btn danger" id="mDel">Удалить лид</button>' : "") + "</div></div>";
+    $("mClose").onclick = function () { m.hidden = true; };
+    $("mSave").onclick = async function () { var r = await sb.from("leads").update({ comment: $("mComment").value }).eq("id", id); if (r.error) return toast("Не удалось сохранить"); l.comment = $("mComment").value; toast("Сохранено"); };
+    if ($("mDel")) $("mDel").onclick = async function () {
+      if (!$("mDel").dataset.sure) { $("mDel").dataset.sure = "1"; $("mDel").textContent = "Точно удалить?"; return; }
+      var r = await sb.from("leads").delete().eq("id", id); if (r.error) return toast("Не удалось удалить");
+      S.leads = S.leads.filter(function (x) { return x.id !== id; }); m.hidden = true; renderList(); toast("Лид удалён");
+    };
+    if (l.card_path) { var u = await sb.storage.from("cards").createSignedUrl(l.card_path, 3600); if (u.data) $("mImg").innerHTML = '<label>Визитка</label><img class="cardimg" alt="Визитка" src="' + esc(u.data.signedUrl) + '">'; }
+  }
+
+  $("xlsBtn").onclick = function () {
+    var list = filtered(); if (!list.length) return toast("Нечего выгружать");
+    var rows = list.map(function (l) { return { "Дата": fmt(l.created_at), "Выставка": l.show, "Страна": l.country, "Менеджер": l.manager, "Имя": l.name, "Компания": l.company, "Телефон": l.phone, "Email": l.email, "Услуги": (l.services || []).join(", "), "Гипотеза": l.hyp, "Языки клиента": (l.langs || []).map(function (k) { return LANGS[k] || k; }).join(", "), "Этап": l.stage, "Комментарий": l.comment }; });
+    var wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "Лиды");
+    XLSX.writeFile(wb, "INAPO-leads-" + new Date().toISOString().slice(0, 10) + ".xlsx");
+  };
+
+  /* ---------- настройки (только админ) ---------- */
+  function rowHtml(kind, id, title, sub) { return '<div class="row card" style="padding:.5rem .75rem;margin-bottom:.4rem"><div class="grow"><b>' + esc(title) + '</b> <span class="mute small">' + esc(sub || "") + '</span></div><button class="btn danger" data-del="' + kind + ":" + id + '">Удалить</button></div>'; }
+  var FUN = { mp: "Marketplace", tk: "Продажи под ключ", ai: "B2B-портал / AI" };
+  function renderSettings() {
+    $("setShows").innerHTML = S.shows.map(function (s) { return rowHtml("shows", s.id, s.name, s.country); }).join("");
+    $("setSvcs").innerHTML = S.services.map(function (s) { return rowHtml("services", s.id, s.name, "воронка: " + (FUN[s.funnel] || s.funnel)); }).join("");
+    $("setHyps").innerHTML = S.hyps.map(function (h) { return rowHtml("hypotheses", h.id, h.name, ""); }).join("");
+  }
+  async function addRef(table, rec, resetIds) {
+    var r = await sb.from(table).insert(rec); if (r.error) return toast(r.error.code === "23505" ? "Такое название уже есть" : "Не удалось добавить");
+    resetIds.forEach(function (i) { $(i).value = ""; }); await loadRefs(); renderSettings(); renderForm();
+  }
+  $("nsAdd").onclick = function () { var n = $("nsName").value.trim(); if (n) addRef("shows", { name: n, country: $("nsCountry").value.trim() }, ["nsName", "nsCountry"]); };
+  $("nvAdd").onclick = function () { var n = $("nvName").value.trim(); if (n) addRef("services", { name: n, funnel: $("nvFun").value }, ["nvName"]); };
+  $("nhAdd").onclick = function () { var n = $("nhName").value.trim(); if (n) addRef("hypotheses", { name: n }, ["nhName"]); };
+  $("tab-settings").onclick = async function (e) {
+    var b = e.target.closest("[data-del]"); if (!b) return;
+    if (!b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "Точно?"; return; }
+    var p = b.getAttribute("data-del").split(":"); var r = await sb.from(p[0]).delete().eq("id", p[1]); if (r.error) return toast("Не удалось удалить");
+    await loadRefs(); renderSettings(); renderForm();
+  };
+
+  /* ---------- вкладки ---------- */
+  $("nav").onclick = function (e) {
+    var b = e.target.closest("button[data-tab]"); if (!b) return; var t = b.getAttribute("data-tab");
+    Array.prototype.forEach.call($("nav").querySelectorAll("button[data-tab]"), function (x) { x.classList.toggle("on", x === b); });
+    ["new", "list", "settings"].forEach(function (k) { $("tab-" + k).hidden = k !== t; });
+    if (t === "list") loadLeads(); if (t === "settings") renderSettings();
+  };
+
+  window.addEventListener("online", flushQueue); setInterval(flushQueue, 30000);
+  boot();
+})();
+</script>
+</body>
+</html>
