@@ -83,8 +83,9 @@ img.cardimg{max-width:100%;border-radius:8px;border:1px solid var(--line)}
     <section id="tab-new" class="card narrow stack">
       <div class="grid2">
         <div><label for="fShow">Выставка</label><select id="fShow"></select></div>
-        <div><label>Менеджер</label><input id="fMgr" disabled></div>
+        <div><label for="fStand">Стенд (необязательно)</label><input id="fStand" autocomplete="off" placeholder="Например, B12"></div>
       </div>
+      <div><label>Приоритет</label><div class="chips" id="fPrio"></div></div>
       <div class="grid2">
         <button id="photoBtn" class="btn pri" type="button">Сфотографировать визитку</button>
         <div id="photoInfo" class="small mute" style="align-self:center">Фото визитки не добавлено</div>
@@ -96,7 +97,9 @@ img.cardimg{max-width:100%;border-radius:8px;border:1px solid var(--line)}
         <div><label for="fCompany">Компания</label><input id="fCompany" autocomplete="off"></div>
         <div><label for="fPhone">Телефон</label><input id="fPhone" type="tel" autocomplete="off"></div>
         <div><label for="fEmail">Email</label><input id="fEmail" type="email" autocomplete="off"></div>
+        <div><label for="fCountry">Страна клиента</label><input id="fCountry" autocomplete="off" placeholder="Например, Польша"></div>
       </div>
+      <div><label>Производитель или продавец</label><div class="chips" id="fKind"></div></div>
       <div><label>Услуга, которой интересовался *</label><div class="chips" id="fServices"></div></div>
       <div><label>Гипотеза работы после выставки</label><div class="chips" id="fHyp"></div></div>
       <div><label>Языки клиента (можно несколько)</label><div class="chips" id="fLangs"></div></div>
@@ -141,8 +144,11 @@ img.cardimg{max-width:100%;border-radius:8px;border:1px solid var(--line)}
   if (!cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY) { $("setup").hidden = false; return; }
   var sb = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, { auth: { persistSession: true, autoRefreshToken: true } });
 
-  var S = { user: null, profile: null, shows: [], services: [], hyps: [], leads: [], form: { services: [], hyp: "", langs: ["en"], photo: null } };
+  var S = { user: null, profile: null, shows: [], services: [], hyps: [], leads: [], form: { services: [], hyp: "", langs: ["en"], photo: null, prio: "mid", kind: "unk" } };
   var QUEUE_KEY = "inapo_queue_v1";
+  var PRIOS = [["top", "Топ"], ["high", "Высокий"], ["mid", "Средний"], ["low", "Низкий"], ["min", "Минимальный"]];
+  var KINDS = [["maker", "Производитель"], ["seller", "Продавец"], ["both", "И то и другое"], ["unk", "Пока неизвестно"]];
+  function lbl(arr, k) { var x = arr.find(function (a) { return a[0] === k; }); return x ? x[1] : ""; }
 
   function toast(m) { var t = $("toast"); t.textContent = m; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(function () { t.hidden = true; }, 3200); }
   function uid() { return (crypto.randomUUID ? crypto.randomUUID() : Date.now() + "-" + Math.random().toString(36).slice(2)); }
@@ -211,7 +217,6 @@ img.cardimg{max-width:100%;border-radius:8px;border:1px solid var(--line)}
     if (!S.profile.name) await askName();
     $("who").textContent = S.profile.name + (S.profile.role === "admin" ? " · админ" : "");
     $("navSet").hidden = S.profile.role !== "admin";
-    $("fMgr").value = S.profile.name;
     await loadRefs(); renderForm(); showBanner(); flushQueue(); loadLeads();
   }
   function askName() {
@@ -254,6 +259,8 @@ img.cardimg{max-width:100%;border-radius:8px;border:1px solid var(--line)}
       var a = S.form.services, i = a.indexOf(v); if (i > -1) a.splice(i, 1); else a.push(v); renderForm();
     });
     chips($("fHyp"), S.hyps.map(function (h) { return { v: h.name, t: h.name }; }), function (v) { return S.form.hyp === v; }, function (v) { S.form.hyp = S.form.hyp === v ? "" : v; renderForm(); });
+    chips($("fPrio"), PRIOS.map(function (x) { return { v: x[0], t: x[1] }; }), function (v) { return S.form.prio === v; }, function (v) { S.form.prio = v; renderForm(); });
+    chips($("fKind"), KINDS.map(function (x) { return { v: x[0], t: x[1] }; }), function (v) { return S.form.kind === v; }, function (v) { S.form.kind = v; renderForm(); });
     chips($("fLangs"), Object.keys(LANGS).map(function (k) { return { v: k, t: LANGS[k] }; }), function (v) { return S.form.langs.indexOf(v) > -1; }, function (v) {
       var a = S.form.langs, i = a.indexOf(v); if (i > -1) { if (a.length > 1) a.splice(i, 1); } else a.push(v); renderForm();
     });
@@ -281,7 +288,8 @@ img.cardimg{max-width:100%;border-radius:8px;border:1px solid var(--line)}
     var item = { photo: S.form.photo, rec: {
       client_op_id: uid(), name: name, company: $("fCompany").value.trim(), phone: $("fPhone").value.trim(), email: $("fEmail").value.trim(),
       services: S.form.services.slice(), langs: S.form.langs.slice(), hyp: S.form.hyp, comment: $("fComment").value.trim(),
-      show: show ? show.name : "", country: show ? show.country : "", manager: S.profile.name } };
+      show: show ? show.name : "", country: $("fCountry").value.trim(), stand: $("fStand").value.trim(),
+      priority: S.form.prio, kind: S.form.kind, manager: S.profile.name } };
     $("saveBtn").disabled = true;
     try { await submitLead(item); toast("Лид сохранён"); }
     catch (e) {
@@ -289,8 +297,8 @@ img.cardimg{max-width:100%;border-radius:8px;border:1px solid var(--line)}
       else { console.error(e); $("saveBtn").disabled = false; return toast("Ошибка сохранения: " + (e.message || "неизвестная")); }
     }
     $("saveBtn").disabled = false;
-    ["fName", "fCompany", "fPhone", "fEmail", "fComment"].forEach(function (id) { $(id).value = ""; });
-    S.form = { services: [], hyp: "", langs: ["en"], photo: null }; $("photoPrev").hidden = true; $("photoInfo").textContent = "Фото визитки не добавлено"; renderForm();
+    ["fName", "fCompany", "fPhone", "fEmail", "fComment", "fStand", "fCountry"].forEach(function (id) { $(id).value = ""; });
+    S.form = { services: [], hyp: "", langs: ["en"], photo: null, prio: "mid", kind: "unk" }; $("photoPrev").hidden = true; $("photoInfo").textContent = "Фото визитки не добавлено"; renderForm();
     loadLeads();
   };
 
@@ -324,7 +332,7 @@ img.cardimg{max-width:100%;border-radius:8px;border:1px solid var(--line)}
     var m = $("modal"); m.hidden = false;
     m.innerHTML = '<div class="card stack"><div class="row" style="justify-content:space-between"><h3 style="margin:0">' + esc(l.name) + '</h3><button class="btn" id="mClose">Закрыть</button></div>' +
       '<div class="mute">' + esc(l.company || "Компания не указана") + "</div>" +
-      '<div class="grid2 small"><div>Телефон: <b>' + esc(l.phone || "—") + "</b></div><div>Email: <b>" + esc(l.email || "—") + "</b></div><div>Выставка: <b>" + esc(l.show) + "</b></div><div>Менеджер: <b>" + esc(l.manager) + "</b></div><div>Услуги: <b>" + esc((l.services || []).join(", ") || "—") + "</b></div><div>Языки: <b>" + esc((l.langs || []).map(function (k) { return LANGS[k] || k; }).join(", ")) + "</b></div><div>Гипотеза: <b>" + esc(l.hyp || "—") + "</b></div><div>Добавлен: <b>" + fmt(l.created_at) + "</b></div></div>" +
+      '<div class="grid2 small"><div>Телефон: <b>' + esc(l.phone || "—") + "</b></div><div>Email: <b>" + esc(l.email || "—") + "</b></div><div>Выставка: <b>" + esc(l.show) + "</b></div><div>Приоритет: <b>" + esc(lbl(PRIOS, l.priority) || "—") + "</b></div><div>Стенд: <b>" + esc(l.stand || "—") + "</b></div><div>Страна: <b>" + esc(l.country || "—") + "</b></div><div>Тип: <b>" + esc(lbl(KINDS, l.kind) || "—") + "</b></div><div>Менеджер: <b>" + esc(l.manager) + "</b></div><div>Услуги: <b>" + esc((l.services || []).join(", ") || "—") + "</b></div><div>Языки: <b>" + esc((l.langs || []).map(function (k) { return LANGS[k] || k; }).join(", ")) + "</b></div><div>Гипотеза: <b>" + esc(l.hyp || "—") + "</b></div><div>Добавлен: <b>" + fmt(l.created_at) + "</b></div></div>" +
       '<div><label for="mComment">Комментарий</label><textarea id="mComment" rows="4">' + esc(l.comment) + "</textarea></div>" +
       '<div id="mImg"></div><div class="row"><button class="btn pri" id="mSave">Сохранить комментарий</button>' + (S.profile.role === "admin" ? '<button class="btn danger" id="mDel">Удалить лид</button>' : "") + "</div></div>";
     $("mClose").onclick = function () { m.hidden = true; };
@@ -339,7 +347,7 @@ img.cardimg{max-width:100%;border-radius:8px;border:1px solid var(--line)}
 
   $("xlsBtn").onclick = function () {
     var list = filtered(); if (!list.length) return toast("Нечего выгружать");
-    var rows = list.map(function (l) { return { "Дата": fmt(l.created_at), "Выставка": l.show, "Страна": l.country, "Менеджер": l.manager, "Имя": l.name, "Компания": l.company, "Телефон": l.phone, "Email": l.email, "Услуги": (l.services || []).join(", "), "Гипотеза": l.hyp, "Языки клиента": (l.langs || []).map(function (k) { return LANGS[k] || k; }).join(", "), "Этап": l.stage, "Комментарий": l.comment }; });
+    var rows = list.map(function (l) { return { "Дата": fmt(l.created_at), "Выставка": l.show, "Приоритет": lbl(PRIOS, l.priority), "Стенд": l.stand, "Страна": l.country, "Тип": lbl(KINDS, l.kind), "Менеджер": l.manager, "Имя": l.name, "Компания": l.company, "Телефон": l.phone, "Email": l.email, "Услуги": (l.services || []).join(", "), "Гипотеза": l.hyp, "Языки клиента": (l.langs || []).map(function (k) { return LANGS[k] || k; }).join(", "), "Этап": l.stage, "Комментарий": l.comment }; });
     var wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "Лиды");
     XLSX.writeFile(wb, "INAPO-leads-" + new Date().toISOString().slice(0, 10) + ".xlsx");
   };
