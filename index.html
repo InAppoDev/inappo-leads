@@ -81,6 +81,10 @@ td input.bare:hover{border-color:var(--line)}
 .lc{display:block;width:100%;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px;font:inherit;color:inherit;cursor:pointer}
 .ptag{display:inline-block;border-radius:999px;padding:2px 10px;font-size:.75rem;font-weight:500;margin:2px 4px 0 0}
 @media (max-width:900px){.tw{display:none}.cards{display:block}}
+.srow{display:flex;gap:.5rem;align-items:center;margin-bottom:.4rem;flex-wrap:wrap}
+.srow input:not([type]),.srow input[type=text]{flex:1;min-width:140px}
+.srow input[type=color]{width:44px;height:38px;padding:2px;flex:none}
+.mv2{display:flex}.mv2 button{border:1px solid var(--line);background:var(--panel);color:var(--mute);cursor:pointer;padding:.35rem .5rem;font-size:.75rem}.mv2 button:first-child{border-radius:6px 0 0 6px}.mv2 button:last-child{border-radius:0 6px 6px 0;border-left:0}
 img.cardimg{max-width:100%;border-radius:8px;border:1px solid var(--line)}
 </style>
 </head>
@@ -155,14 +159,7 @@ img.cardimg{max-width:100%;border-radius:8px;border:1px solid var(--line)}
       <div class="cards" id="cards"></div>
     </section>
 
-    <section id="tab-settings" hidden class="stack">
-      <div class="card stack"><h3 style="margin:0">Выставки</h3><div id="setShows"></div>
-        <div class="row"><input class="grow" id="nsName" placeholder="Название"><input class="grow" id="nsCountry" placeholder="Страна"><button class="btn pri" id="nsAdd">Добавить</button></div></div>
-      <div class="card stack"><h3 style="margin:0">Услуги</h3><p class="small mute" style="margin:0">Список для поля «Услуга, которой интересовался». Воронка нужна на следующем этапе, для раздела «Клиенты».</p><div id="setSvcs"></div>
-        <div class="row"><input class="grow" id="nvName" placeholder="Название услуги"><select class="grow" id="nvFun"><option value="mp">Воронка: Marketplace</option><option value="tk">Воронка: Продажи под ключ</option><option value="ai">Воронка: B2B-портал / AI</option></select><button class="btn pri" id="nvAdd">Добавить</button></div></div>
-      <div class="card stack"><h3 style="margin:0">Гипотезы работы после выставки</h3><div id="setHyps"></div>
-        <div class="row"><input class="grow" id="nhName" placeholder="Новая гипотеза"><button class="btn pri" id="nhAdd">Добавить</button></div></div>
-    </section>
+    <section id="tab-settings" hidden class="stack"></section>
   </main>
 </div>
 
@@ -512,26 +509,124 @@ img.cardimg{max-width:100%;border-radius:8px;border:1px solid var(--line)}
   };
 
   /* ---------- настройки (только админ) ---------- */
-  function rowHtml(kind, id, title, sub) { return '<div class="row card" style="padding:.5rem .75rem;margin-bottom:.4rem"><div class="grow"><b>' + esc(title) + '</b> <span class="mute small">' + esc(sub || "") + '</span></div><button class="btn danger" data-del="' + kind + ":" + id + '">Удалить</button></div>'; }
   var FUN = { mp: "Marketplace", tk: "Продажи под ключ", ai: "B2B-портал / AI" };
+  var LD = [
+    { k: "shows", s: "shows", title: "Выставки", help: "Выставка, на которой вы собираете лиды.", extra: "country", ph: "Название выставки",
+      used: function (l, it) { return l.show === it.name; } },
+    { k: "services", s: "services", title: "Услуги", help: "Список для поля «Услуга, которой интересовался». Воронка нужна на следующем этапе, для раздела «Клиенты».", extra: "funnel", ph: "Название услуги",
+      used: function (l, it) { return (l.services || []).indexOf(it.name) > -1; } },
+    { k: "hypotheses", s: "hyps", title: "Гипотезы работы после выставки", help: "Что планируете делать с клиентом после выставки.", ph: "Новая гипотеза",
+      used: function (l, it) { return l.hyp === it.name; } },
+    { k: "steps", s: "steps", title: "Следующие шаги", help: "Цвет виден в таблице лидов. Порядок меняется стрелками.", color: true, order: true, ph: "Название шага",
+      used: function (l, it) { return l.step_id === it.id; } },
+    { k: "stages", s: "stages", title: "Этапы", help: "Этапы воронки. При удалении этапа его лиды переходят на первый из оставшихся.", color: true, order: true, ph: "Название этапа",
+      used: function (l, it) { return l.stage_id === it.id; } },
+    { k: "responsibles", s: "resp", title: "Ответственные", help: "Просто имена, они не связаны с логинами. Так можно назначить и человека без доступа в приложение.", order: true, ph: "Имя",
+      used: function (l, it) { return l.responsible_id === it.id; } }
+  ];
+  var LDK = {}; LD.forEach(function (L) { LDK[L.k] = L; });
+  function usedBy(L, it) { return S.leads.filter(function (l) { return L.used(l, it); }); }
+  function plural(n) { var m = n % 10, c = n % 100; return n + (m === 1 && c !== 11 ? " лид" : (m >= 2 && m <= 4 && (c < 10 || c >= 20) ? " лида" : " лидов")); }
+
   function renderSettings() {
-    $("setShows").innerHTML = S.shows.map(function (s) { return rowHtml("shows", s.id, s.name, s.country); }).join("");
-    $("setSvcs").innerHTML = S.services.map(function (s) { return rowHtml("services", s.id, s.name, "воронка: " + (FUN[s.funnel] || s.funnel)); }).join("");
-    $("setHyps").innerHTML = S.hyps.map(function (h) { return rowHtml("hypotheses", h.id, h.name, ""); }).join("");
+    $("tab-settings").innerHTML = LD.map(function (L) {
+      var rows = S[L.s].map(function (it) {
+        var n = usedBy(L, it).length;
+        return '<div class="srow" data-k="' + L.k + '" data-id="' + it.id + '">' +
+          (L.color ? '<input type="color" data-sf="color" value="' + esc(it.color || "#e0e0e0") + '" title="Цвет">' : "") +
+          '<input data-sf="name" value="' + esc(it.name) + '">' +
+          (L.extra === "country" ? '<input data-sf="country" value="' + esc(it.country) + '" placeholder="Страна" style="max-width:140px">' : "") +
+          (L.extra === "funnel" ? '<select data-sf="funnel" style="max-width:190px">' + Object.keys(FUN).map(function (f) { return '<option value="' + f + '"' + (it.funnel === f ? " selected" : "") + ">" + esc(FUN[f]) + "</option>"; }).join("") + "</select>" : "") +
+          '<span class="small mute" style="min-width:70px">' + (n ? "у " + plural(n) : "не используется") + "</span>" +
+          (L.order ? '<span class="mv2"><button type="button" data-mvk="up" title="Выше" aria-label="Выше">▲</button><button type="button" data-mvk="down" title="Ниже" aria-label="Ниже">▼</button></span>' : "") +
+          '<button class="btn danger" type="button" data-del="1">Удалить</button></div>';
+      }).join("") || '<div class="small mute">Список пуст.</div>';
+      var add = '<div class="srow" style="margin-top:.4rem">' + (L.color ? '<input type="color" data-ai="' + L.k + ':color" value="#cfe2f8" title="Цвет">' : "") +
+        '<input data-ai="' + L.k + ':name" placeholder="' + esc(L.ph) + '">' +
+        (L.extra === "country" ? '<input data-ai="' + L.k + ':country" placeholder="Страна" style="max-width:140px">' : "") +
+        (L.extra === "funnel" ? '<select data-ai="' + L.k + ':funnel" style="max-width:190px">' + Object.keys(FUN).map(function (f) { return '<option value="' + f + '">Воронка: ' + esc(FUN[f]) + "</option>"; }).join("") + "</select>" : "") +
+        '<button class="btn pri" type="button" data-add="' + L.k + '">Добавить</button></div>';
+      return '<div class="card stack"><h3 style="margin:0">' + esc(L.title) + '</h3><p class="small mute" style="margin:0">' + esc(L.help) + "</p><div>" + rows + "</div>" + add + "</div>";
+    }).join("");
   }
-  async function addRef(table, rec, resetIds) {
-    var r = await sb.from(table).insert(rec); if (r.error) return toast(r.error.code === "23505" ? "Такое название уже есть" : "Не удалось добавить");
-    resetIds.forEach(function (i) { $(i).value = ""; }); await loadRefs(); renderSettings(); renderForm();
+  async function refreshAll() { await loadRefs(); await loadLeads(); renderSettings(); renderForm(); }
+
+  // переименование названия, которое лиды хранят текстом (выставка, гипотеза, услуга)
+  async function cascadeRename(L, oldN, newN) {
+    if (L.k === "shows") await sb.from("leads").update({ show: newN }).eq("show", oldN);
+    else if (L.k === "hypotheses") await sb.from("leads").update({ hyp: newN }).eq("hyp", oldN);
+    else if (L.k === "services") {
+      var rs = S.leads.filter(function (l) { return (l.services || []).indexOf(oldN) > -1; });
+      await Promise.all(rs.map(function (l) { return sb.from("leads").update({ services: l.services.map(function (z) { return z === oldN ? newN : z; }) }).eq("id", l.id); }));
+    }
   }
-  $("nsAdd").onclick = function () { var n = $("nsName").value.trim(); if (n) addRef("shows", { name: n, country: $("nsCountry").value.trim() }, ["nsName", "nsCountry"]); };
-  $("nvAdd").onclick = function () { var n = $("nvName").value.trim(); if (n) addRef("services", { name: n, funnel: $("nvFun").value }, ["nvName"]); };
-  $("nhAdd").onclick = function () { var n = $("nhName").value.trim(); if (n) addRef("hypotheses", { name: n }, ["nhName"]); };
-  $("tab-settings").onclick = async function (e) {
-    var b = e.target.closest("[data-del]"); if (!b) return;
-    if (!b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "Точно?"; return; }
-    var p = b.getAttribute("data-del").split(":"); var r = await sb.from(p[0]).delete().eq("id", p[1]); if (r.error) return toast("Не удалось удалить");
-    await loadRefs(); renderSettings(); renderForm();
-  };
+  async function editRef(L, id, f, v) {
+    var it = byId(S[L.s], id); if (!it) return;
+    var old = it[f];
+    if (f === "name") { v = v.trim(); if (!v || v === old) return renderSettings(); }
+    var o = {}; o[f] = v;
+    var r = await sb.from(L.k).update(o).eq("id", id);
+    if (r.error) { toast(r.error.code === "23505" ? "Такое название уже есть" : "Не удалось сохранить: " + (r.error.message || "")); return renderSettings(); }
+    if (f === "name") await cascadeRename(L, old, v);
+    await refreshAll(); renderList();
+  }
+  async function deleteRef(L, id) {
+    var it = byId(S[L.s], id); if (!it) return;
+    var rs = usedBy(L, it), r;
+    if (L.k === "stages") {
+      var other = S.stages.find(function (s) { return s.id !== id; });
+      if (!other) return toast("Нужен хотя бы один этап");
+      r = await sb.from("leads").update({ stage_id: other.id }).eq("stage_id", id); if (r.error) return toast("Не удалось перенести лиды на другой этап");
+    } else if (L.k === "steps") { r = await sb.from("leads").update({ step_id: null }).eq("step_id", id); if (r.error) return toast("Не удалось очистить шаг у лидов"); }
+    else if (L.k === "responsibles") { r = await sb.from("leads").update({ responsible_id: null }).eq("responsible_id", id); if (r.error) return toast("Не удалось очистить ответственного у лидов"); }
+    else if (L.k === "shows") { r = await sb.from("leads").update({ show: "" }).eq("show", it.name); if (r.error) return toast("Не удалось обновить лиды"); }
+    else if (L.k === "hypotheses") { r = await sb.from("leads").update({ hyp: "" }).eq("hyp", it.name); if (r.error) return toast("Не удалось обновить лиды"); }
+    else if (L.k === "services") {
+      var rr = await Promise.all(rs.map(function (l) { return sb.from("leads").update({ services: l.services.filter(function (z) { return z !== it.name; }) }).eq("id", l.id); }));
+      if (rr.some(function (x) { return x.error; })) return toast("Не удалось обновить лиды");
+    }
+    r = await sb.from(L.k).delete().eq("id", id); if (r.error) return toast("Не удалось удалить");
+    await refreshAll(); renderList(); toast("Удалено");
+  }
+  async function moveRef(L, id, dir) {
+    var a = S[L.s].slice().sort(function (x, y) { return (x.sort_order || 0) - (y.sort_order || 0); }), i = a.findIndex(function (x) { return x.id === id; }), j = i + dir;
+    if (i < 0 || j < 0 || j >= a.length) return;
+    var t = a[i]; a[i] = a[j]; a[j] = t;
+    var ch = []; a.forEach(function (x, n) { if (x.sort_order !== n + 1) { x.sort_order = n + 1; ch.push(x); } });
+    var rs = await Promise.all(ch.map(function (x) { return sb.from(L.k).update({ sort_order: x.sort_order }).eq("id", x.id); }));
+    if (rs.some(function (x) { return x.error; })) toast("Не удалось сохранить порядок");
+    await refreshAll(); renderList();
+  }
+  async function addRef(L) {
+    var g = function (f) { var e = $("tab-settings").querySelector('[data-ai="' + L.k + ":" + f + '"]'); return e ? e.value.trim() : ""; };
+    var name = g("name"); if (!name) return toast("Введите название");
+    var rec = { name: name };
+    if (L.extra === "country") rec.country = g("country");
+    if (L.extra === "funnel") rec.funnel = g("funnel") || "mp";
+    if (L.color) rec.color = g("color") || "#e0e0e0";
+    if (L.order) rec.sort_order = S[L.s].reduce(function (m, x) { return Math.max(m, x.sort_order || 0); }, 0) + 1;
+    var r = await sb.from(L.k).insert(rec); if (r.error) return toast(r.error.code === "23505" ? "Такое название уже есть" : "Не удалось добавить: " + (r.error.message || ""));
+    await refreshAll();
+  }
+  $("tab-settings").addEventListener("change", function (e) {
+    var t = e.target, f = t.getAttribute("data-sf"), row = t.closest("[data-k]"); if (!f || !row) return;
+    editRef(LDK[row.getAttribute("data-k")], row.getAttribute("data-id"), f, t.value);
+  });
+  $("tab-settings").addEventListener("click", function (e) {
+    var b = e.target.closest("button"); if (!b) return;
+    var row = b.closest("[data-k]");
+    if (b.hasAttribute("data-add")) return addRef(LDK[b.getAttribute("data-add")]);
+    if (!row) return;
+    var L = LDK[row.getAttribute("data-k")], id = row.getAttribute("data-id");
+    if (b.hasAttribute("data-mvk")) return moveRef(L, id, b.getAttribute("data-mvk") === "up" ? -1 : 1);
+    if (b.hasAttribute("data-del")) {
+      if (!b.dataset.sure) {
+        var it = byId(S[L.s], id), n = usedBy(L, it).length;
+        b.dataset.sure = "1"; b.textContent = n ? (L.k === "stages" ? "Точно? " + plural(n) + " перейдут на другой этап" : "Точно? Уберётся у " + plural(n)) : "Точно?"; return;
+      }
+      deleteRef(L, id);
+    }
+  });
 
   /* ---------- вкладки ---------- */
   $("nav").onclick = function (e) {
@@ -539,7 +634,7 @@ img.cardimg{max-width:100%;border-radius:8px;border:1px solid var(--line)}
     Array.prototype.forEach.call($("nav").querySelectorAll("button[data-tab]"), function (x) { x.classList.toggle("on", x === b); });
     ["new", "list", "settings"].forEach(function (k) { $("tab-" + k).hidden = k !== t; });
     $("tab-list").parentNode.classList.toggle("wide", t === "list");
-    if (t === "list") loadLeads(); if (t === "settings") renderSettings();
+    if (t === "list") loadLeads(); if (t === "settings") { renderSettings(); loadLeads().then(renderSettings); }
   };
 
   document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible" && S.user && !$("tab-list").hidden && $("modal").hidden) loadLeads(); });
