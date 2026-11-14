@@ -49,6 +49,38 @@ button.danger{color:var(--bad)}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:20;overflow:auto;padding:1rem}
 .overlay .card{max-width:640px;margin:1rem auto}
 #login{max-width:380px;margin:12vh auto;padding:0 1rem}
+main.wide{max-width:1500px}
+button.btn{white-space:nowrap}
+:root{--head:#2b3340;--badSoft:#fde3e1;--warnSoft:#fff0c2;--warn:#7a5a00}
+@media (prefers-color-scheme:dark){:root{--head:#2b3340;--badSoft:#4a1f1c;--warnSoft:#3a2f0b;--warn:#f4dd9a}}
+option{background:var(--panel);color:var(--text)}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem}
+@media (max-width:640px){.g3{grid-template-columns:1fr}}
+.filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.6rem;align-items:end}
+.tw{overflow:auto;max-height:72vh;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+table{border-collapse:separate;border-spacing:0;min-width:1760px;width:100%;font-size:.85rem}
+th{position:sticky;top:0;z-index:2;background:var(--head);color:#fff;font-weight:600;text-align:left;padding:9px 8px;white-space:nowrap}
+td{padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:hover td{background:var(--tonal)}
+td.name{position:sticky;left:0;background:var(--panel);z-index:1;min-width:190px;box-shadow:1px 0 0 var(--line)}
+tr:hover td.name{background:var(--tonal)}
+th.name{left:0;z-index:3}
+td select,td input{padding:5px 6px;font-size:.82rem;border-radius:6px}
+td input.bare{border-color:transparent;background:transparent}
+td input.bare:hover{border-color:var(--line)}
+.cs{font-weight:500;border-color:transparent}
+.nm{background:none;border:0;padding:0;color:var(--pri);font:600 .9rem Roboto,sans-serif;text-align:left;cursor:pointer}
+.nm:hover{text-decoration:underline}
+.cmt{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;min-width:220px;max-width:300px}
+.late{background:var(--badSoft)!important;color:var(--bad)}
+.now{background:var(--warnSoft)!important;color:var(--warn)}
+.mv{display:flex;flex-direction:column}
+.mv button{border:0;background:none;color:var(--mute);cursor:pointer;line-height:1;padding:2px 4px;font-size:.7rem}
+.mv button:hover{color:var(--pri)}
+.cards{display:none}
+.lc{display:block;width:100%;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px;font:inherit;color:inherit;cursor:pointer}
+.ptag{display:inline-block;border-radius:999px;padding:2px 10px;font-size:.75rem;font-weight:500;margin:2px 4px 0 0}
+@media (max-width:900px){.tw{display:none}.cards{display:block}}
 img.cardimg{max-width:100%;border-radius:8px;border:1px solid var(--line)}
 </style>
 </head>
@@ -71,7 +103,7 @@ img.cardimg{max-width:100%;border-radius:8px;border:1px solid var(--line)}
     <h1>INAPO Lead Collector</h1>
     <nav id="nav">
       <button data-tab="new" class="on">Новый лид</button>
-      <button data-tab="list">Лиды</button>
+      <button data-tab="list">Лиды <span id="cntL"></span></button>
       <button data-tab="settings" id="navSet" hidden>Настройки</button>
       <button id="logout">Выйти</button>
     </nav>
@@ -108,14 +140,19 @@ img.cardimg{max-width:100%;border-radius:8px;border:1px solid var(--line)}
     </section>
 
     <section id="tab-list" hidden class="stack">
-      <div class="card row">
-        <div class="grow"><label for="qSearch">Поиск</label><input id="qSearch" placeholder="Имя, компания, email…"></div>
-        <div class="grow"><label for="qShow">Выставка</label><select id="qShow"></select></div>
-        <div class="grow"><label for="qMgr">Менеджер</label><select id="qMgr"></select></div>
-        <button id="xlsBtn" class="btn pri" style="align-self:flex-end">Выгрузить в Excel</button>
+      <div class="filters">
+        <div><label for="qQ">Поиск</label><input id="qQ" placeholder="Имя, компания, почта…"></div>
+        <div><label for="qPrio">Приоритет</label><select id="qPrio"></select></div>
+        <div><label for="qCountry">Страна</label><select id="qCountry"></select></div>
+        <div><label for="qStage">Этап</label><select id="qStage"></select></div>
+        <div><label for="qResp">Ответственный</label><select id="qResp"></select></div>
+        <div><label for="qShow">Выставка</label><select id="qShow"></select></div>
+        <div class="row"><button class="chip" id="qToday" type="button">План на сегодня</button></div>
+        <div class="row"><button class="btn" id="refBtn" type="button">Обновить</button><button class="btn pri" id="xlsBtn" type="button">В Excel</button></div>
       </div>
       <div id="leadsCount" class="small mute"></div>
-      <div id="leads"></div>
+      <div class="tw"><table><thead><tr id="thead"></tr></thead><tbody id="tbody"></tbody></table></div>
+      <div class="cards" id="cards"></div>
     </section>
 
     <section id="tab-settings" hidden class="stack">
@@ -129,6 +166,7 @@ img.cardimg{max-width:100%;border-radius:8px;border:1px solid var(--line)}
   </main>
 </div>
 
+<datalist id="countries"></datalist>
 <div id="modal" class="overlay" hidden></div>
 <div id="toast" hidden></div>
 
@@ -144,7 +182,7 @@ img.cardimg{max-width:100%;border-radius:8px;border:1px solid var(--line)}
   if (!cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY) { $("setup").hidden = false; return; }
   var sb = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, { auth: { persistSession: true, autoRefreshToken: true } });
 
-  var S = { user: null, profile: null, shows: [], services: [], hyps: [], leads: [], form: { services: [], hyp: "", langs: ["en"], photo: null, prio: "mid", kind: "unk" } };
+  var S = { user: null, profile: null, shows: [], services: [], hyps: [], steps: [], stages: [], resp: [], last: {}, leads: [], form: { services: [], hyp: "", langs: ["en"], photo: null, prio: "mid", kind: "unk" } };
   var QUEUE_KEY = "inapo_queue_v1";
   var PRIOS = [["top", "Топ"], ["high", "Высокий"], ["mid", "Средний"], ["low", "Низкий"], ["min", "Минимальный"]];
   var KINDS = [["maker", "Производитель"], ["seller", "Продавец"], ["both", "И то и другое"], ["unk", "Пока неизвестно"]];
@@ -233,14 +271,15 @@ img.cardimg{max-width:100%;border-radius:8px;border:1px solid var(--line)}
   }
 
   /* ---------- справочники ---------- */
-  function cacheRefs() { try { localStorage.setItem("inapo_refs_v1", JSON.stringify({ shows: S.shows, services: S.services, hyps: S.hyps })); } catch (e) {} }
+  function cacheRefs() { try { localStorage.setItem("inapo_refs_v1", JSON.stringify({ shows: S.shows, services: S.services, hyps: S.hyps, steps: S.steps, stages: S.stages, resp: S.resp })); } catch (e) {} }
   async function loadRefs() {
     try {
-      var a = await Promise.all([sb.from("shows").select("*").order("name"), sb.from("services").select("*").order("name"), sb.from("hypotheses").select("*").order("name")]);
+      var a = await Promise.all([sb.from("shows").select("*").order("name"), sb.from("services").select("*").order("name"), sb.from("hypotheses").select("*").order("name"),
+        sb.from("steps").select("*").order("sort_order"), sb.from("stages").select("*").order("sort_order"), sb.from("responsibles").select("*").order("sort_order")]);
       if (a[0].error || a[1].error || a[2].error) throw (a[0].error || a[1].error || a[2].error);
-      S.shows = a[0].data; S.services = a[1].data; S.hyps = a[2].data; cacheRefs();
+      S.shows = a[0].data; S.services = a[1].data; S.hyps = a[2].data; S.steps = a[3].data || []; S.stages = a[4].data || []; S.resp = a[5].data || []; cacheRefs();
     } catch (e) {
-      try { var c = JSON.parse(localStorage.getItem("inapo_refs_v1") || "null"); if (c) { S.shows = c.shows; S.services = c.services; S.hyps = c.hyps; } } catch (x) {}
+      try { var c = JSON.parse(localStorage.getItem("inapo_refs_v1") || "null"); if (c) { S.shows = c.shows; S.services = c.services; S.hyps = c.hyps; S.steps = c.steps || []; S.stages = c.stages || []; S.resp = c.resp || []; } } catch (x) {}
     }
   }
 
@@ -302,52 +341,172 @@ img.cardimg{max-width:100%;border-radius:8px;border:1px solid var(--line)}
     loadLeads();
   };
 
-  /* ---------- список лидов ---------- */
+  /* ---------- таблица лидов ---------- */
+  var PRIO_BG = { top: "#f4a6a6", high: "#fcd5a5", mid: "#fdf1a8", low: "#cfe2f8", min: "#dcdcdc" };
+  var CH = [["call", "Звонок"], ["wa", "WhatsApp"], ["email", "Email"], ["meet", "Встреча"], ["other", "Другое"]];
+  var RANK = { top: 0, high: 1, mid: 2, low: 3, min: 4 };
+  var pad2 = function (n) { return (n < 10 ? "0" : "") + n; };
+  var TODAY = (function () { var d = new Date(); return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()); })();
+  var fmtD = function (s) { return s ? s.slice(8, 10) + "." + s.slice(5, 7) : ""; };
+  var lum = function (h) { return 0.299 * parseInt(h.slice(1, 3), 16) + 0.587 * parseInt(h.slice(3, 5), 16) + 0.114 * parseInt(h.slice(5, 7), 16); };
+  var col = function (bg) { return "background:" + bg + ";color:" + (lum(bg) > 150 ? "#1b2430" : "#fff"); };
+  var byId = function (a, id) { for (var i = 0; i < (a || []).length; i++) if (a[i].id === id) return a[i]; return null; };
+  var nameOf = function (a, id) { var x = byId(a, id); return x ? x.name : ""; };
+  function opts(arr, cur, empty, valKey) {
+    return (empty ? '<option value="">' + esc(empty) + "</option>" : "") + arr.map(function (x) {
+      var v = Array.isArray(x) ? x[0] : x.id, t = Array.isArray(x) ? x[1] : x.name;
+      return '<option value="' + esc(v) + '"' + (v === cur ? " selected" : "") + ">" + esc(t) + "</option>";
+    }).join("");
+  }
+  function touchLine(t) { return fmtD(t.happened_on) + " · " + (lbl(CH, t.kind) || "") + " " + (t.direction === "in" ? "←" : "→") + (t.comment ? " " + t.comment.slice(0, 70) : ""); }
+
   async function loadLeads() {
-    try { var r = await sb.from("leads").select("*").order("created_at", { ascending: false }).limit(2000); if (r.error) throw r.error; S.leads = r.data; try { localStorage.setItem("inapo_leads_cache", JSON.stringify(S.leads.slice(0, 300))); } catch (x) {} }
-    catch (e) { try { S.leads = JSON.parse(localStorage.getItem("inapo_leads_cache") || "[]"); } catch (x) { S.leads = []; } }
+    try {
+      var r = await sb.from("leads").select("*").order("created_at", { ascending: false }).limit(2000); if (r.error) throw r.error;
+      S.leads = r.data; try { localStorage.setItem("inapo_leads_cache", JSON.stringify(S.leads.slice(0, 300))); } catch (x) {}
+      S.last = {};
+      var t = await sb.from("touches").select("lead_id,happened_on,kind,direction,comment").order("happened_on", { ascending: false }).order("created_at", { ascending: false }).limit(5000);
+      if (!t.error) (t.data || []).forEach(function (x) { if (!S.last[x.lead_id]) S.last[x.lead_id] = x; });
+    } catch (e) { try { S.leads = JSON.parse(localStorage.getItem("inapo_leads_cache") || "[]"); } catch (x) { S.leads = []; } }
     renderList();
   }
+
+  var FL = { q: "", prio: "", country: "", stage: "", resp: "", show: "", today: false };
+  var HEAD = ["№", "Приоритет", "Имя / Компания", "Стенд", "Страна", "Почта", "Телефон", "Тип", "Комментарий", "Этап", "Последнее касание", "След. дата", "След. шаг", "Описание шага", "Ответственный"];
+  $("thead").innerHTML = HEAD.map(function (h, i) { return "<th" + (i === 2 ? ' class="name"' : "") + ">" + h + "</th>"; }).join("");
+  var ord = function (l) { return l.sort_order > 0 ? l.sort_order : 1e9 + (l.num || 0); };
+  function sorted() {
+    return S.leads.slice().sort(function (a, b) { return ((RANK[a.priority] || 0) - (RANK[b.priority] || 0)) || (ord(a) - ord(b)) || ((a.num || 0) - (b.num || 0)); });
+  }
   function filtered() {
-    var q = $("qSearch").value.trim().toLowerCase(), sh = $("qShow").value, mg = $("qMgr").value;
-    return S.leads.filter(function (l) { return (!sh || l.show === sh) && (!mg || l.manager === mg) && (!q || [l.name, l.company, l.email, l.phone, l.comment].join(" ").toLowerCase().indexOf(q) > -1); });
+    var q = FL.q.toLowerCase();
+    return sorted().filter(function (l) {
+      return (!FL.prio || l.priority === FL.prio) && (!FL.country || l.country === FL.country) && (!FL.stage || l.stage_id === FL.stage) && (!FL.resp || l.responsible_id === FL.resp) && (!FL.show || l.show === FL.show) &&
+        (!FL.today || (l.next_touch_date && l.next_touch_date <= TODAY)) && (!q || [l.name, l.company, l.email, l.phone, l.comment, l.country, l.stand].join(" ").toLowerCase().indexOf(q) > -1);
+    });
   }
+  function filterBar() {
+    $("qPrio").innerHTML = opts(PRIOS, FL.prio, "Все");
+    var cs = S.leads.map(function (l) { return l.country; }).filter(function (v, i, a) { return v && a.indexOf(v) === i; }).sort();
+    $("qCountry").innerHTML = '<option value="">Все</option>' + cs.map(function (c) { return "<option" + (c === FL.country ? " selected" : "") + ">" + esc(c) + "</option>"; }).join("");
+    $("qStage").innerHTML = opts(S.stages, FL.stage, "Все");
+    $("qResp").innerHTML = opts(S.resp, FL.resp, "Все");
+    $("qShow").innerHTML = '<option value="">Все</option>' + S.shows.map(function (s) { return "<option" + (s.name === FL.show ? " selected" : "") + ">" + esc(s.name) + "</option>"; }).join("");
+    $("qToday").classList.toggle("on", FL.today);
+    $("countries").innerHTML = cs.map(function (c) { return "<option>" + esc(c) + "</option>"; }).join("");
+  }
+  function dateCls(l) { return !l.next_touch_date ? "" : l.next_touch_date < TODAY ? "late" : l.next_touch_date === TODAY ? "now" : ""; }
   function renderList() {
-    var shKeep = $("qShow").value, mgKeep = $("qMgr").value;
-    var shows = Array.from(new Set(S.leads.map(function (l) { return l.show; }).filter(Boolean))), mgrs = Array.from(new Set(S.leads.map(function (l) { return l.manager; }).filter(Boolean)));
-    $("qShow").innerHTML = '<option value="">Все</option>' + shows.map(function (s) { return "<option>" + esc(s) + "</option>"; }).join(""); $("qShow").value = shKeep;
-    $("qMgr").innerHTML = '<option value="">Все</option>' + mgrs.map(function (s) { return "<option>" + esc(s) + "</option>"; }).join(""); $("qMgr").value = mgKeep;
+    $("cntL").textContent = "(" + S.leads.length + ")"; filterBar();
     var list = filtered();
-    $("leadsCount").textContent = "Лидов: " + list.length + (list.length !== S.leads.length ? " из " + S.leads.length : "");
-    $("leads").innerHTML = list.length ? list.map(function (l) {
-      return '<button class="item" data-id="' + l.id + '"><b>' + esc(l.name) + "</b>" + (l.company ? ' <span class="mute">· ' + esc(l.company) + "</span>" : "") + "<div>" +
-        (l.services || []).map(function (s) { return '<span class="tag">' + esc(s) + "</span>"; }).join("") + '</div><div class="small mute">' + esc(l.show) + " · " + esc(l.manager) + " · " + fmt(l.created_at) + "</div></button>";
-    }).join("") : '<div class="card mute">Лидов нет. Добавьте первого на вкладке «Новый лид» или смените фильтры.</div>';
-  }
-  ["qSearch", "qShow", "qMgr"].forEach(function (id) { $(id).oninput = renderList; });
-  $("leads").onclick = function (e) { var b = e.target.closest(".item"); if (b) openLead(b.getAttribute("data-id")); };
-
-  async function openLead(id) {
-    var l = S.leads.find(function (x) { return x.id === id; }); if (!l) return;
-    var m = $("modal"); m.hidden = false;
-    m.innerHTML = '<div class="card stack"><div class="row" style="justify-content:space-between"><h3 style="margin:0">' + esc(l.name) + '</h3><button class="btn" id="mClose">Закрыть</button></div>' +
-      '<div class="mute">' + esc(l.company || "Компания не указана") + "</div>" +
-      '<div class="grid2 small"><div>Телефон: <b>' + esc(l.phone || "—") + "</b></div><div>Email: <b>" + esc(l.email || "—") + "</b></div><div>Выставка: <b>" + esc(l.show) + "</b></div><div>Приоритет: <b>" + esc(lbl(PRIOS, l.priority) || "—") + "</b></div><div>Стенд: <b>" + esc(l.stand || "—") + "</b></div><div>Страна: <b>" + esc(l.country || "—") + "</b></div><div>Тип: <b>" + esc(lbl(KINDS, l.kind) || "—") + "</b></div><div>Менеджер: <b>" + esc(l.manager) + "</b></div><div>Услуги: <b>" + esc((l.services || []).join(", ") || "—") + "</b></div><div>Языки: <b>" + esc((l.langs || []).map(function (k) { return LANGS[k] || k; }).join(", ")) + "</b></div><div>Гипотеза: <b>" + esc(l.hyp || "—") + "</b></div><div>Добавлен: <b>" + fmt(l.created_at) + "</b></div></div>" +
-      '<div><label for="mComment">Комментарий</label><textarea id="mComment" rows="4">' + esc(l.comment) + "</textarea></div>" +
-      '<div id="mImg"></div><div class="row"><button class="btn pri" id="mSave">Сохранить комментарий</button>' + (S.profile.role === "admin" ? '<button class="btn danger" id="mDel">Удалить лид</button>' : "") + "</div></div>";
-    $("mClose").onclick = function () { m.hidden = true; };
-    $("mSave").onclick = async function () { var r = await sb.from("leads").update({ comment: $("mComment").value }).eq("id", id); if (r.error) return toast("Не удалось сохранить"); l.comment = $("mComment").value; toast("Сохранено"); };
-    if ($("mDel")) $("mDel").onclick = async function () {
-      if (!$("mDel").dataset.sure) { $("mDel").dataset.sure = "1"; $("mDel").textContent = "Точно удалить?"; return; }
-      var r = await sb.from("leads").delete().eq("id", id); if (r.error) return toast("Не удалось удалить");
-      S.leads = S.leads.filter(function (x) { return x.id !== id; }); m.hidden = true; renderList(); toast("Лид удалён");
-    };
-    if (l.card_path) { var u = await sb.storage.from("cards").createSignedUrl(l.card_path, 3600); if (u.data) $("mImg").innerHTML = '<label>Визитка</label><img class="cardimg" alt="Визитка" src="' + esc(u.data.signedUrl) + '">'; }
+    $("leadsCount").textContent = "Показано: " + list.length + " из " + S.leads.length + ". Стрелки ▲▼ двигают лид внутри своего приоритета.";
+    $("tbody").innerHTML = list.map(function (l) {
+      var id = l.id, pbg = PRIO_BG[l.priority] || PRIO_BG.mid, st = byId(S.stages, l.stage_id), sp = byId(S.steps, l.step_id), lt = S.last && S.last[id];
+      return '<tr><td><div class="row" style="flex-wrap:nowrap;gap:4px"><div class="mv"><button data-mv="up" data-id="' + id + '" title="Выше" aria-label="Выше">▲</button><button data-mv="down" data-id="' + id + '" title="Ниже" aria-label="Ниже">▼</button></div><span class="mute">' + esc(l.num || "") + "</span></div></td>" +
+        '<td><select class="cs" data-f="priority" data-id="' + id + '" style="min-width:122px;' + col(pbg) + '">' + opts(PRIOS, l.priority) + "</select></td>" +
+        '<td class="name"><button class="nm" data-open="' + id + '">' + esc(l.name) + "</button>" + (l.company ? '<div class="mute small">' + esc(l.company) + "</div>" : "") + "</td>" +
+        '<td><input class="bare" data-f="stand" data-id="' + id + '" value="' + esc(l.stand) + '" style="width:80px"></td>' +
+        '<td><input class="bare" data-f="country" data-id="' + id + '" value="' + esc(l.country) + '" list="countries" style="width:120px"></td>' +
+        '<td style="min-width:190px;overflow-wrap:anywhere">' + esc(l.email) + '</td><td style="min-width:130px">' + esc(l.phone) + "</td>" +
+        "<td>" + esc(lbl(KINDS, l.kind)) + '</td><td><div class="cmt">' + esc(l.comment) + "</div></td>" +
+        '<td><select class="cs" data-f="stage_id" data-id="' + id + '" style="min-width:108px;' + col(st ? st.color : "#e0e0e0") + '">' + opts(S.stages, l.stage_id, "—") + "</select></td>" +
+        '<td style="min-width:200px" class="small">' + (lt ? esc(touchLine(lt)) : '<span class="mute">нет записей</span>') + "</td>" +
+        '<td><input type="date" data-f="next_touch_date" data-id="' + id + '" value="' + esc(l.next_touch_date || "") + '" class="' + dateCls(l) + '" style="width:140px"></td>' +
+        '<td><select class="cs" data-f="step_id" data-id="' + id + '" style="min-width:180px;' + (sp ? col(sp.color) : "") + '">' + opts(S.steps, l.step_id, "—") + "</select></td>" +
+        '<td><input class="bare" data-f="step_note" data-id="' + id + '" value="' + esc(l.step_note) + '" style="min-width:170px"></td>' +
+        '<td><select data-f="responsible_id" data-id="' + id + '" style="min-width:130px">' + opts(S.resp, l.responsible_id, "—") + "</select></td></tr>";
+    }).join("") || '<tr><td colspan="15" class="mute" style="padding:20px">Лидов нет. Добавьте первого на вкладке «Новый лид» или смените фильтры.</td></tr>';
+    $("cards").innerHTML = list.map(function (l) {
+      var pbg = PRIO_BG[l.priority] || PRIO_BG.mid, sp = byId(S.steps, l.step_id), st = byId(S.stages, l.stage_id);
+      return '<button class="lc" data-open="' + l.id + '"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><b>' + esc(l.name) + '</b><span class="ptag" style="' + col(pbg) + '">' + esc(lbl(PRIOS, l.priority)) + "</span></div>" + (l.company ? '<div class="mute">' + esc(l.company) + "</div>" : "") +
+        '<div class="small mute">' + esc([l.country, l.stand && "стенд " + l.stand].filter(Boolean).join(" · ")) + "</div><div>" + (st ? '<span class="ptag" style="' + col(st.color) + '">' + esc(st.name) + "</span>" : "") + (sp ? '<span class="ptag" style="' + col(sp.color) + '">' + esc(sp.name) + "</span>" : "") + "</div>" +
+        (l.next_touch_date ? '<div class="small ' + dateCls(l) + '" style="display:inline-block;padding:1px 6px;border-radius:6px;margin-top:4px">Следующее касание: ' + fmtD(l.next_touch_date) + (l.responsible_id ? ", " + esc(nameOf(S.resp, l.responsible_id)) : "") + "</div>" : "") + "</button>";
+    }).join("") || '<div class="card mute">Лидов нет. Добавьте первого на вкладке «Новый лид» или смените фильтры.</div>';
   }
 
+  // сохранение одного поля: сразу в базу; при ошибке перечитываем список
+  var NULLABLE = { stage_id: 1, step_id: 1, responsible_id: 1, next_touch_date: 1 };
+  async function setField(id, f, v) {
+    var l = byId(S.leads, id); if (!l) return false;
+    if (NULLABLE[f] && v === "") v = null;
+    if (f === "name" && !String(v).trim()) { toast("Имя не может быть пустым"); renderList(); return false; }
+    var old = l[f]; l[f] = v;
+    var r = await sb.from("leads").update((function () { var o = {}; o[f] = v; return o; })()).eq("id", id);
+    if (r.error) { l[f] = old; toast(isNetErr(r.error) ? "Нет связи: изменение не сохранено" : "Не удалось сохранить: " + (r.error.message || "")); renderList(); return false; }
+    return true;
+  }
+  function onFilter() { FL.q = $("qQ").value; FL.prio = $("qPrio").value; FL.country = $("qCountry").value; FL.stage = $("qStage").value; FL.resp = $("qResp").value; FL.show = $("qShow").value; renderList(); }
+  $("qQ").oninput = function () { FL.q = $("qQ").value; renderList(); };
+  ["qPrio", "qCountry", "qStage", "qResp", "qShow"].forEach(function (id) { $(id).onchange = onFilter; });
+  $("qToday").onclick = function () { FL.today = !FL.today; renderList(); };
+  $("refBtn").onclick = async function () { await loadRefs(); await loadLeads(); toast("Обновлено"); };
+  $("tab-list").addEventListener("change", async function (e) {
+    var t = e.target, f = t.getAttribute("data-f"); if (!f) return;
+    await setField(t.getAttribute("data-id"), f, t.value); renderList();
+  });
+  $("tab-list").addEventListener("click", async function (e) {
+    var o = e.target.closest("[data-open]"); if (o) { openLead(o.getAttribute("data-open")); return; }
+    var m = e.target.closest("[data-mv]"); if (!m) return;
+    var id = m.getAttribute("data-id"), dir = m.getAttribute("data-mv") === "up" ? -1 : 1, vis = filtered(), i = vis.findIndex(function (x) { return x.id === id; }), j = i + dir;
+    if (j < 0 || j >= vis.length || vis[j].priority !== vis[i].priority) return toast("Выше или ниже только внутри своего приоритета. Чтобы переместить дальше, смените приоритет.");
+    var a = vis[i], b = vis[j], group = sorted().filter(function (x) { return x.priority === a.priority; }), changed = [];
+    group.forEach(function (x, k) { if (x.sort_order !== k + 1) { x.sort_order = k + 1; changed.push(x); } });
+    var t = a.sort_order; a.sort_order = b.sort_order; b.sort_order = t;
+    if (changed.indexOf(a) < 0) changed.push(a); if (changed.indexOf(b) < 0) changed.push(b);
+    renderList();
+    var rs = await Promise.all(changed.map(function (x) { return sb.from("leads").update({ sort_order: x.sort_order }).eq("id", x.id); }));
+    if (rs.some(function (r) { return r.error; })) { toast("Не удалось сохранить порядок"); loadLeads(); }
+  });
+
+  /* ---------- карточка лида ---------- */
+  var M = { id: null };
+  function openLead(id) { M = { id: id }; $("modal").hidden = false; renderModal(); }
+  function closeModal() { $("modal").hidden = true; M.id = null; renderList(); }
+  function renderModal() {
+    var l = byId(S.leads, M.id); if (!l) return closeModal();
+    var top = $("modal").scrollTop;
+    var h = '<div class="card stack"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><h3 id="mTitle" style="margin:0">' + esc(l.name) + '</h3><button class="btn" data-m="close">Закрыть</button></div><div id="mImg"></div>';
+    h += '<div class="g3">' + [["name", "Имя"], ["company", "Компания"], ["stand", "Стенд"], ["country", "Страна"], ["phone", "Телефон"], ["email", "Email"]].map(function (f) { return "<div><label>" + f[1] + '</label><input data-mf="' + f[0] + '" value="' + esc(l[f[0]]) + '"' + (f[0] === "country" ? ' list="countries"' : "") + "></div>"; }).join("") + "</div>";
+    h += '<div class="g3"><div><label>Приоритет</label><select data-mf="priority">' + opts(PRIOS, l.priority) + '</select></div><div><label>Тип</label><select data-mf="kind">' + opts(KINDS, l.kind) + '</select></div><div><label>Этап</label><select data-mf="stage_id">' + opts(S.stages, l.stage_id, "—") + "</select></div></div>";
+    h += '<div><label>Услуги</label><div class="chips">' + S.services.map(function (s) { return '<button type="button" class="chip' + ((l.services || []).indexOf(s.name) > -1 ? " on" : "") + '" data-ms="' + esc(s.name) + '">' + esc(s.name) + "</button>"; }).join("") + "</div></div>";
+    h += '<div><label>Гипотеза</label><div class="chips">' + S.hyps.map(function (s) { return '<button type="button" class="chip' + (l.hyp === s.name ? " on" : "") + '" data-mh="' + esc(s.name) + '">' + esc(s.name) + "</button>"; }).join("") + "</div></div>";
+    h += '<div><label>Комментарий</label><textarea rows="4" data-mf="comment">' + esc(l.comment) + "</textarea></div>";
+    h += '<div class="card" style="background:var(--tonal);border-color:transparent"><b>Следующее касание</b><div class="grid2" style="margin-top:.6rem"><div><label>Дата</label><input type="date" data-mf="next_touch_date" value="' + esc(l.next_touch_date || "") + '"></div><div><label>Ответственный</label><select data-mf="responsible_id">' + opts(S.resp, l.responsible_id, "—") + '</select></div><div><label>Шаг</label><select data-mf="step_id">' + opts(S.steps, l.step_id, "—") + '</select></div><div><label>Описание шага</label><input data-mf="step_note" value="' + esc(l.step_note) + '"></div></div></div>';
+    h += '<div class="small mute">Выставка: ' + esc(l.show || "—") + " · внёс: " + esc(l.manager || "—") + " · " + fmt(l.created_at) + ". Изменения сохраняются сразу.</div>";
+    if (S.profile.role === "admin") h += '<div><button class="btn danger" data-m="delL">Удалить лид</button></div>';
+    h += "</div>";
+    $("modal").innerHTML = h; $("modal").scrollTop = top;
+    if (l.card_path) sb.storage.from("cards").createSignedUrl(l.card_path, 3600).then(function (u) { if (u.data && M.id === l.id && $("mImg")) $("mImg").innerHTML = '<label>Визитка</label><img class="cardimg" alt="Визитка" src="' + esc(u.data.signedUrl) + '">'; });
+  }
+  $("modal").addEventListener("change", async function (e) {
+    var f = e.target.getAttribute("data-mf"); if (!f || !M.id) return;
+    var ok = await setField(M.id, f, e.target.value);
+    if (ok && f === "name" && $("mTitle")) $("mTitle").textContent = e.target.value;
+    if (!ok) renderModal();
+  });
+  $("modal").addEventListener("click", async function (e) {
+    var l = byId(S.leads, M.id), t = e.target, b;
+    if (t === $("modal")) return closeModal();
+    if (!l) return;
+    if ((b = t.closest("[data-ms]"))) { var n = b.getAttribute("data-ms"), a = (l.services || []).slice(), i = a.indexOf(n); if (i > -1) a.splice(i, 1); else a.push(n); await setField(l.id, "services", a); return renderModal(); }
+    if ((b = t.closest("[data-mh]"))) { var hn = b.getAttribute("data-mh"); await setField(l.id, "hyp", l.hyp === hn ? "" : hn); return renderModal(); }
+    if (!(b = t.closest("[data-m]"))) return;
+    var act = b.getAttribute("data-m");
+    if (act === "close") return closeModal();
+    if (act === "delL") {
+      if (!b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "Точно удалить?"; return; }
+      var r = await sb.from("leads").delete().eq("id", l.id); if (r.error) return toast("Не удалось удалить");
+      S.leads = S.leads.filter(function (x) { return x.id !== l.id; }); closeModal(); toast("Лид удалён");
+    }
+  });
+
+  /* ---------- Excel ---------- */
   $("xlsBtn").onclick = function () {
     var list = filtered(); if (!list.length) return toast("Нечего выгружать");
-    var rows = list.map(function (l) { return { "Дата": fmt(l.created_at), "Выставка": l.show, "Приоритет": lbl(PRIOS, l.priority), "Стенд": l.stand, "Страна": l.country, "Тип": lbl(KINDS, l.kind), "Менеджер": l.manager, "Имя": l.name, "Компания": l.company, "Телефон": l.phone, "Email": l.email, "Услуги": (l.services || []).join(", "), "Гипотеза": l.hyp, "Языки клиента": (l.langs || []).map(function (k) { return LANGS[k] || k; }).join(", "), "Этап": l.stage, "Комментарий": l.comment }; });
+    var rows = list.map(function (l) {
+      var lt = S.last && S.last[l.id];
+      return { "№": l.num, "Приоритет": lbl(PRIOS, l.priority), "Имя": l.name, "Компания": l.company, "Стенд": l.stand, "Страна": l.country, "Почта": l.email, "Телефон": l.phone, "Тип": lbl(KINDS, l.kind), "Услуги": (l.services || []).join(", "), "Гипотеза": l.hyp, "Языки": (l.langs || []).map(function (k) { return LANGS[k] || k; }).join(", "), "Комментарий": l.comment, "Выставка": l.show, "Этап": nameOf(S.stages, l.stage_id), "Последнее касание": lt ? touchLine(lt) : "", "Следующая дата касания": l.next_touch_date || "", "Следующий шаг": nameOf(S.steps, l.step_id), "Описание шага": l.step_note, "Ответственный": nameOf(S.resp, l.responsible_id), "Кто внёс": l.manager, "Дата добавления": fmt(l.created_at) };
+    });
     var wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "Лиды");
     XLSX.writeFile(wb, "INAPO-leads-" + new Date().toISOString().slice(0, 10) + ".xlsx");
   };
@@ -379,9 +538,11 @@ img.cardimg{max-width:100%;border-radius:8px;border:1px solid var(--line)}
     var b = e.target.closest("button[data-tab]"); if (!b) return; var t = b.getAttribute("data-tab");
     Array.prototype.forEach.call($("nav").querySelectorAll("button[data-tab]"), function (x) { x.classList.toggle("on", x === b); });
     ["new", "list", "settings"].forEach(function (k) { $("tab-" + k).hidden = k !== t; });
+    $("tab-list").parentNode.classList.toggle("wide", t === "list");
     if (t === "list") loadLeads(); if (t === "settings") renderSettings();
   };
 
+  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible" && S.user && !$("tab-list").hidden && $("modal").hidden) loadLeads(); });
   window.addEventListener("online", flushQueue); setInterval(flushQueue, 30000);
   boot();
 })();
